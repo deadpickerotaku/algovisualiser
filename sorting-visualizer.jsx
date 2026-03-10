@@ -1,0 +1,809 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+// ============================================================================
+// SORTING ALGORITHMS
+// ============================================================================
+
+/**
+ * Bubble Sort - Repeatedly steps through list, compares adjacent elements
+ * Time: O(n²) | Space: O(1)
+ */
+function* bubbleSort(arr) {
+  const array = [...arr];
+  const n = array.length;
+  
+  for (let i = 0; i < n - 1; i++) {
+    for (let j = 0; j < n - i - 1; j++) {
+      yield { type: 'compare', indices: [j, j + 1] };
+      
+      if (array[j] > array[j + 1]) {
+        [array[j], array[j + 1]] = [array[j + 1], array[j]];
+        yield { type: 'swap', indices: [j, j + 1], array: [...array] };
+      }
+    }
+    yield { type: 'markSorted', index: n - i - 1 };
+  }
+  yield { type: 'markSorted', index: 0 };
+  return array;
+}
+
+/**
+ * Selection Sort - Finds minimum element and places it at beginning
+ * Time: O(n²) | Space: O(1)
+ */
+function* selectionSort(arr) {
+  const array = [...arr];
+  const n = array.length;
+  
+  for (let i = 0; i < n - 1; i++) {
+    let minIdx = i;
+    yield { type: 'compare', indices: [minIdx] };
+    
+    for (let j = i + 1; j < n; j++) {
+      yield { type: 'compare', indices: [minIdx, j] };
+      
+      if (array[j] < array[minIdx]) {
+        minIdx = j;
+      }
+    }
+    
+    if (minIdx !== i) {
+      [array[i], array[minIdx]] = [array[minIdx], array[i]];
+      yield { type: 'swap', indices: [i, minIdx], array: [...array] };
+    }
+    yield { type: 'markSorted', index: i };
+  }
+  yield { type: 'markSorted', index: n - 1 };
+  return array;
+}
+
+/**
+ * Insertion Sort - Builds final sorted array one item at a time
+ * Time: O(n²) | Space: O(1)
+ */
+function* insertionSort(arr) {
+  const array = [...arr];
+  const n = array.length;
+  
+  yield { type: 'markSorted', index: 0 };
+  
+  for (let i = 1; i < n; i++) {
+    const key = array[i];
+    let j = i - 1;
+    
+    yield { type: 'compare', indices: [i] };
+    
+    while (j >= 0 && array[j] > key) {
+      yield { type: 'compare', indices: [j, j + 1] };
+      array[j + 1] = array[j];
+      yield { type: 'overwrite', indices: [j + 1], array: [...array] };
+      j--;
+    }
+    
+    array[j + 1] = key;
+    yield { type: 'overwrite', indices: [j + 1], array: [...array] };
+    yield { type: 'markSorted', index: i };
+  }
+  return array;
+}
+
+/**
+ * Merge Sort - Divide and conquer algorithm
+ * Time: O(n log n) | Space: O(n)
+ */
+function* mergeSort(arr, start = 0, end = arr.length - 1) {
+  if (start >= end) return;
+  
+  const mid = Math.floor((start + end) / 2);
+  
+  yield* mergeSort(arr, start, mid);
+  yield* mergeSort(arr, mid + 1, end);
+  yield* merge(arr, start, mid, end);
+}
+
+function* merge(arr, start, mid, end) {
+  const left = arr.slice(start, mid + 1);
+  const right = arr.slice(mid + 1, end + 1);
+  
+  let i = 0, j = 0, k = start;
+  
+  while (i < left.length && j < right.length) {
+    yield { type: 'compare', indices: [start + i, mid + 1 + j] };
+    
+    if (left[i] <= right[j]) {
+      arr[k] = left[i];
+      yield { type: 'overwrite', indices: [k], array: [...arr] };
+      i++;
+    } else {
+      arr[k] = right[j];
+      yield { type: 'overwrite', indices: [k], array: [...arr] };
+      j++;
+    }
+    k++;
+  }
+  
+  while (i < left.length) {
+    arr[k] = left[i];
+    yield { type: 'overwrite', indices: [k], array: [...arr] };
+    i++;
+    k++;
+  }
+  
+  while (j < right.length) {
+    arr[k] = right[j];
+    yield { type: 'overwrite', indices: [k], array: [...arr] };
+    j++;
+    k++;
+  }
+  
+  for (let idx = start; idx <= end; idx++) {
+    yield { type: 'markSorted', index: idx };
+  }
+}
+
+/**
+ * Quick Sort - Divide and conquer with pivot partitioning
+ * Time: O(n log n) avg, O(n²) worst | Space: O(log n)
+ */
+function* quickSort(arr, low = 0, high = arr.length - 1) {
+  if (low < high) {
+    const pi = yield* partition(arr, low, high);
+    yield* quickSort(arr, low, pi - 1);
+    yield* quickSort(arr, pi + 1, high);
+  } else if (low === high) {
+    yield { type: 'markSorted', index: low };
+  }
+}
+
+function* partition(arr, low, high) {
+  const pivot = arr[high];
+  let i = low - 1;
+  
+  yield { type: 'compare', indices: [high] };
+  
+  for (let j = low; j < high; j++) {
+    yield { type: 'compare', indices: [j, high] };
+    
+    if (arr[j] < pivot) {
+      i++;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      yield { type: 'swap', indices: [i, j], array: [...arr] };
+    }
+  }
+  
+  [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
+  yield { type: 'swap', indices: [i + 1, high], array: [...arr] };
+  yield { type: 'markSorted', index: i + 1 };
+  
+  return i + 1;
+}
+
+// ============================================================================
+// ALGORITHM METADATA
+// ============================================================================
+
+const ALGORITHMS = {
+  bubble: {
+    name: 'Bubble Sort',
+    fn: bubbleSort,
+    timeComplexity: 'O(n²)',
+    spaceComplexity: 'O(1)',
+    description: 'Repeatedly compares adjacent elements and swaps them if they are in the wrong order. Simple but inefficient for large datasets.',
+  },
+  selection: {
+    name: 'Selection Sort',
+    fn: selectionSort,
+    timeComplexity: 'O(n²)',
+    spaceComplexity: 'O(1)',
+    description: 'Finds the minimum element from unsorted portion and places it at the beginning. Performs fewer swaps than bubble sort.',
+  },
+  insertion: {
+    name: 'Insertion Sort',
+    fn: insertionSort,
+    timeComplexity: 'O(n²)',
+    spaceComplexity: 'O(1)',
+    description: 'Builds the sorted array one element at a time by inserting elements into their correct position. Efficient for small or nearly sorted data.',
+  },
+  merge: {
+    name: 'Merge Sort',
+    fn: mergeSort,
+    timeComplexity: 'O(n log n)',
+    spaceComplexity: 'O(n)',
+    description: 'Divide-and-conquer algorithm that splits the array into halves, sorts them, and merges them back. Consistently efficient but uses extra space.',
+  },
+  quick: {
+    name: 'Quick Sort',
+    fn: quickSort,
+    timeComplexity: 'O(n log n)',
+    spaceComplexity: 'O(log n)',
+    description: 'Selects a pivot element and partitions array around it. Very efficient in practice and widely used, though worst-case is O(n²).',
+  },
+};
+
+// ============================================================================
+// VISUALIZER COMPONENT
+// ============================================================================
+
+export default function SortingVisualizer() {
+  const [array, setArray] = useState([]);
+  const [algorithm, setAlgorithm] = useState('bubble');
+  const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [speed, setSpeed] = useState(50);
+  const [comparing, setComparing] = useState([]);
+  const [swapping, setSwapping] = useState([]);
+  const [sorted, setSorted] = useState([]);
+  const [currentStep, setCurrentStep] = useState('');
+  const [arraySize, setArraySize] = useState(30);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [theme, setTheme] = useState('dark');
+  const [customInput, setCustomInput] = useState('');
+  
+  const generatorRef = useRef(null);
+  const audioContextRef = useRef(null);
+
+  // Initialize array on mount
+  useEffect(() => {
+    generateRandomArray();
+  }, [arraySize]);
+
+  // Generate random array
+  const generateRandomArray = () => {
+    const newArray = Array.from({ length: arraySize }, () => 
+      Math.floor(Math.random() * 90) + 10
+    );
+    setArray(newArray);
+    resetVisualization();
+  };
+
+  // Set custom array from input
+  const setCustomArray = () => {
+    try {
+      const values = customInput
+        .split(',')
+        .map(v => parseInt(v.trim()))
+        .filter(v => !isNaN(v) && v > 0 && v <= 100);
+      
+      if (values.length > 0) {
+        setArray(values);
+        setArraySize(values.length);
+        resetVisualization();
+        setCustomInput('');
+      }
+    } catch (e) {
+      alert('Invalid input. Use comma-separated numbers (1-100).');
+    }
+  };
+
+  // Reset visualization state
+  const resetVisualization = () => {
+    setIsRunning(false);
+    setIsPaused(false);
+    setComparing([]);
+    setSwapping([]);
+    setSorted([]);
+    setCurrentStep('');
+    generatorRef.current = null;
+  };
+
+  // Play sound effect
+  const playSound = (frequency) => {
+    if (!soundEnabled) return;
+    
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    
+    const ctx = audioContextRef.current;
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+    
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.1);
+  };
+
+  // Start sorting visualization
+  const startSorting = async () => {
+    if (isRunning && !isPaused) return;
+    
+    if (!generatorRef.current) {
+      resetVisualization();
+      const sortFn = ALGORITHMS[algorithm].fn;
+      generatorRef.current = sortFn([...array]);
+    }
+    
+    setIsRunning(true);
+    setIsPaused(false);
+    
+    const delay = (101 - speed) * 10; // Convert speed to delay
+    
+    try {
+      let step = generatorRef.current.next();
+      
+      while (!step.done) {
+        if (!isRunning || isPaused) break;
+        
+        const { type, indices, array: newArray } = step.value;
+        
+        // Update visualization state based on step type
+        switch (type) {
+          case 'compare':
+            setComparing(indices);
+            setSwapping([]);
+            setCurrentStep(`Comparing elements at positions ${indices.join(' and ')}`);
+            playSound(200 + indices[0] * 10);
+            break;
+            
+          case 'swap':
+            setSwapping(indices);
+            setComparing([]);
+            setArray(newArray);
+            setCurrentStep(`Swapping elements at positions ${indices.join(' and ')}`);
+            playSound(300 + indices[0] * 10);
+            break;
+            
+          case 'overwrite':
+            setArray(newArray);
+            setSwapping(indices);
+            setComparing([]);
+            setCurrentStep(`Inserting element at position ${indices[0]}`);
+            playSound(250 + indices[0] * 10);
+            break;
+            
+          case 'markSorted':
+            setSorted(prev => [...prev, indices]);
+            setCurrentStep(`Position ${indices} is now in final place`);
+            playSound(400);
+            break;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        step = generatorRef.current.next();
+      }
+      
+      // Mark all as sorted when complete
+      if (step.done) {
+        setSorted(array.map((_, i) => i));
+        setCurrentStep('Sorting complete!');
+        setIsRunning(false);
+      }
+    } catch (error) {
+      console.error('Sorting error:', error);
+      resetVisualization();
+    }
+  };
+
+  // Pause/Resume
+  const togglePause = () => {
+    setIsPaused(!isPaused);
+  };
+
+  // Stop and reset
+  const stopSorting = () => {
+    resetVisualization();
+    generateRandomArray();
+  };
+
+  // Get bar color based on state
+  const getBarColor = (index) => {
+    if (sorted.includes(index)) return 'bg-emerald-500';
+    if (swapping.includes(index)) return 'bg-rose-500';
+    if (comparing.includes(index)) return 'bg-amber-400';
+    return theme === 'dark' ? 'bg-slate-400' : 'bg-slate-600';
+  };
+
+  // Theme toggle
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
+  const bgClass = theme === 'dark' 
+    ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
+    : 'bg-gradient-to-br from-gray-50 via-white to-gray-50';
+  
+  const textClass = theme === 'dark' ? 'text-slate-100' : 'text-slate-900';
+  const cardClass = theme === 'dark' 
+    ? 'bg-slate-800/50 backdrop-blur-sm border border-slate-700/50' 
+    : 'bg-white/80 backdrop-blur-sm border border-gray-200';
+
+  return (
+    <div className={`min-h-screen ${bgClass} ${textClass} transition-colors duration-500`}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Crimson+Pro:wght@300;400;600&display=swap');
+        
+        body {
+          font-family: 'Crimson Pro', serif;
+        }
+        
+        .mono {
+          font-family: 'Space Mono', monospace;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: ${theme === 'dark' ? '#1e293b' : '#f1f5f9'};
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: ${theme === 'dark' ? '#475569' : '#cbd5e1'};
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: ${theme === 'dark' ? '#64748b' : '#94a3b8'};
+        }
+        
+        /* Glow effect */
+        .glow {
+          box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        /* Animated gradient border */
+        @keyframes gradient-shift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        
+        .gradient-border {
+          background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899, #6366f1);
+          background-size: 200% 200%;
+          animation: gradient-shift 3s ease infinite;
+        }
+      `}</style>
+
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <motion.header 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12 text-center"
+        >
+          <h1 className="text-6xl font-bold mb-3 mono bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Algorithm Visualizer
+          </h1>
+          <p className="text-xl opacity-70">
+            Watch sorting algorithms come to life through elegant animation
+          </p>
+        </motion.header>
+
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Left Panel - Controls */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="lg:col-span-1 space-y-6"
+          >
+            {/* Algorithm Selection */}
+            <div className={`${cardClass} rounded-2xl p-6 shadow-xl`}>
+              <h2 className="text-2xl font-semibold mb-4 mono">Algorithm</h2>
+              <select
+                value={algorithm}
+                onChange={(e) => { setAlgorithm(e.target.value); resetVisualization(); }}
+                disabled={isRunning}
+                className={`w-full px-4 py-3 rounded-lg border-2 ${
+                  theme === 'dark' 
+                    ? 'bg-slate-700 border-slate-600 text-slate-100' 
+                    : 'bg-white border-gray-300 text-slate-900'
+                } focus:border-indigo-500 focus:outline-none transition-colors disabled:opacity-50 mono text-lg`}
+              >
+                {Object.entries(ALGORITHMS).map(([key, { name }]) => (
+                  <option key={key} value={key}>{name}</option>
+                ))}
+              </select>
+
+              <div className="mt-6 space-y-3">
+                <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-gray-100'}`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm opacity-70">Time Complexity</span>
+                    <span className="mono font-bold text-indigo-400">
+                      {ALGORITHMS[algorithm].timeComplexity}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm opacity-70">Space Complexity</span>
+                    <span className="mono font-bold text-purple-400">
+                      {ALGORITHMS[algorithm].spaceComplexity}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm opacity-80 leading-relaxed">
+                  {ALGORITHMS[algorithm].description}
+                </p>
+              </div>
+            </div>
+
+            {/* Array Controls */}
+            <div className={`${cardClass} rounded-2xl p-6 shadow-xl`}>
+              <h2 className="text-2xl font-semibold mb-4 mono">Array Setup</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm mb-2 opacity-70">
+                    Array Size: <span className="mono font-bold">{arraySize}</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="5"
+                    max="100"
+                    value={arraySize}
+                    onChange={(e) => setArraySize(parseInt(e.target.value))}
+                    disabled={isRunning}
+                    className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-slate-600 disabled:opacity-50"
+                    style={{
+                      background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${(arraySize - 5) / 95 * 100}%, #475569 ${(arraySize - 5) / 95 * 100}%, #475569 100%)`
+                    }}
+                  />
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={generateRandomArray}
+                  disabled={isRunning}
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                >
+                  Generate Random Array
+                </motion.button>
+
+                <div className="pt-2 border-t border-slate-600/50">
+                  <label className="block text-sm mb-2 opacity-70">
+                    Custom Array (comma-separated)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={customInput}
+                      onChange={(e) => setCustomInput(e.target.value)}
+                      placeholder="e.g., 64, 34, 25, 12, 22"
+                      disabled={isRunning}
+                      className={`flex-1 px-3 py-2 rounded-lg border ${
+                        theme === 'dark'
+                          ? 'bg-slate-700 border-slate-600'
+                          : 'bg-white border-gray-300'
+                      } focus:border-indigo-500 focus:outline-none text-sm disabled:opacity-50`}
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={setCustomArray}
+                      disabled={isRunning}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold text-sm transition-colors disabled:opacity-50"
+                    >
+                      Set
+                    </motion.button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Playback Controls */}
+            <div className={`${cardClass} rounded-2xl p-6 shadow-xl`}>
+              <h2 className="text-2xl font-semibold mb-4 mono">Controls</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm mb-2 opacity-70">
+                    Animation Speed: <span className="mono font-bold">{speed}%</span>
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={speed}
+                    onChange={(e) => setSpeed(parseInt(e.target.value))}
+                    className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                    style={{
+                      background: `linear-gradient(to right, #8b5cf6 0%, #8b5cf6 ${speed}%, #475569 ${speed}%, #475569 100%)`
+                    }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={startSorting}
+                    disabled={isRunning && !isPaused}
+                    className="py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                  >
+                    {isRunning && !isPaused ? 'Running...' : 'Start'}
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={togglePause}
+                    disabled={!isRunning}
+                    className="py-3 bg-amber-600 hover:bg-amber-700 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                  >
+                    {isPaused ? 'Resume' : 'Pause'}
+                  </motion.button>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={stopSorting}
+                  className="w-full py-3 bg-rose-600 hover:bg-rose-700 rounded-lg font-semibold transition-colors shadow-lg"
+                >
+                  Reset
+                </motion.button>
+              </div>
+            </div>
+
+            {/* Settings */}
+            <div className={`${cardClass} rounded-2xl p-6 shadow-xl`}>
+              <h2 className="text-2xl font-semibold mb-4 mono">Settings</h2>
+              
+              <div className="space-y-3">
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="group-hover:text-indigo-400 transition-colors">Sound Effects</span>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={soundEnabled}
+                      onChange={(e) => setSoundEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </div>
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer group">
+                  <span className="group-hover:text-indigo-400 transition-colors">Dark Theme</span>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={theme === 'dark'}
+                      onChange={toggleTheme}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Right Panel - Visualization */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Status Display */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className={`${cardClass} rounded-2xl p-6 shadow-xl`}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-semibold mono">Current Step</h2>
+                {isRunning && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm mono text-emerald-400">RUNNING</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-lg opacity-90 min-h-[1.75rem]">
+                {currentStep || 'Press Start to begin sorting...'}
+              </p>
+            </motion.div>
+
+            {/* Visualization Area */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className={`${cardClass} rounded-2xl p-8 shadow-xl`}
+            >
+              <div className="flex items-end justify-center gap-1 h-96">
+                <AnimatePresence mode="popLayout">
+                  {array.map((value, index) => (
+                    <motion.div
+                      key={`${index}-${value}`}
+                      layout
+                      initial={{ scaleY: 0, opacity: 0 }}
+                      animate={{ scaleY: 1, opacity: 1 }}
+                      exit={{ scaleY: 0, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      className={`flex-1 ${getBarColor(index)} rounded-t-lg transition-colors duration-300 relative group`}
+                      style={{ 
+                        height: `${(value / 100) * 100}%`,
+                        minWidth: array.length > 50 ? '8px' : '12px',
+                        maxWidth: array.length > 50 ? '16px' : '32px',
+                      }}
+                    >
+                      {array.length <= 30 && (
+                        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity mono text-xs font-bold whitespace-nowrap">
+                          {value}
+                        </div>
+                      )}
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+
+              {/* Legend */}
+              <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-slate-400 rounded"></div>
+                  <span className="mono">Unsorted</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-amber-400 rounded"></div>
+                  <span className="mono">Comparing</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-rose-500 rounded"></div>
+                  <span className="mono">Swapping</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-emerald-500 rounded"></div>
+                  <span className="mono">Sorted</span>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Array Display */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className={`${cardClass} rounded-2xl p-6 shadow-xl`}
+            >
+              <h2 className="text-2xl font-semibold mb-4 mono">Array Values</h2>
+              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                {array.map((value, index) => (
+                  <motion.span
+                    key={`value-${index}`}
+                    layout
+                    className={`mono px-3 py-1 rounded-lg font-semibold text-sm ${
+                      sorted.includes(index)
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : swapping.includes(index)
+                        ? 'bg-rose-500/20 text-rose-400'
+                        : comparing.includes(index)
+                        ? 'bg-amber-400/20 text-amber-400'
+                        : theme === 'dark'
+                        ? 'bg-slate-700 text-slate-300'
+                        : 'bg-gray-200 text-slate-700'
+                    } transition-colors duration-300`}
+                  >
+                    {value}
+                  </motion.span>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <motion.footer 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-12 text-center opacity-50 text-sm"
+        >
+          <p className="mono">
+            Built with React, Framer Motion, and Tailwind CSS
+          </p>
+        </motion.footer>
+      </div>
+    </div>
+  );
+}
