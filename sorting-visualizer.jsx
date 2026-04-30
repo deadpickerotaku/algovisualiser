@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';//used bcuz it provides smooth animation
 
-// ============================================================================
+// 
 // SORTING ALGORITHMS
-// ============================================================================
+// 
 
 /**
  * Bubble Sort - Repeatedly steps through list, compares adjacent elements
