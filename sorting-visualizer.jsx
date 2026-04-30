@@ -179,9 +179,9 @@ function* partition(arr, low, high) {
   return i + 1;
 }
 
-// ============================================================================
+// 
 // ALGORITHM METADATA
-// ============================================================================
+// storing information about sorts for acadmeic education 
 
 const ALGORITHMS = {
   bubble: {
@@ -221,9 +221,9 @@ const ALGORITHMS = {
   },
 };
 
-// ============================================================================
+//
 // VISUALIZER COMPONENT
-// ============================================================================
+// 
 
 export default function SortingVisualizer() {
   const [array, setArray] = useState([]);
