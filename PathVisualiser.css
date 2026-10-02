@@ -1,0 +1,59 @@
+.path-visualiser {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+
+/* =========================
+          CONTROLS
+   ========================= */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin: 20px 0;
+}
+
+.controls label {
+  font-weight: bold;
+}
+
+.controls select {
+  padding: 6px 10px;
+  font-size: 14px;
+}
+
+.controls button {
+  padding: 7px 14px;
+
+  border: none;
+  border-radius: 5px;
+
+  cursor: pointer;
+
+  font-weight: bold;
+}
+
+.controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+
+/* =========================
+             GRID
+   ========================= */
+
+.grid {
+  display: flex;
+  flex-direction: column;
+
+  margin-top: 20px;
+}
+
+.row {
+  display: flex;
+}
