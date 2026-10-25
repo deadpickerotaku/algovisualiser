@@ -1,0 +1,63 @@
+.nqueens-container {
+  text-align: center;
+  padding: 30px;
+}
+
+.controls {
+  margin-bottom: 30px;
+}
+
+.controls input {
+  width: 50px;
+  margin-left: 10px;
+  margin-right: 15px;
+  padding: 5px;
+}
+
+.controls button {
+  margin: 5px;
+  padding: 8px 15px;
+  cursor: pointer;
+}
+
+.chess-board {
+  display: grid;
+  width: fit-content;
+  margin: auto;
+}
+
+.queen-cell {
+  width: 60px;
+  height: 60px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  font-size: 40px;
+}
+
+.light {
+  background-color: #f0d9b5;
+}
+
+.dark {
+  background-color: #b58863;
+}
+.speed-control {
+  margin: 15px 0;
+}
+
+.speed-control input {
+  margin: 0 10px;
+  width: 200px;
+}
+
+.status {
+  margin: 10px;
+}
+
+.solving {
+  margin: 10px;
+  font-weight: bold;
+}
