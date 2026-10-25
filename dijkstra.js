@@ -1,0 +1,191 @@
+export function dijkstra(
+  grid,
+  startNode,
+  finishNode
+) {
+  const visitedNodesInOrder = [];
+
+  startNode.distance = 0;
+
+  const unvisitedNodes = getAllNodes(grid);
+
+  while (unvisitedNodes.length) {
+
+    sortNodesByDistance(unvisitedNodes);
+
+    const closestNode =
+      unvisitedNodes.shift();
+
+    // Skip walls
+    if (closestNode.isWall) {
+      continue;
+    }
+
+    // Remaining nodes are unreachable
+    if (
+      closestNode.distance === Infinity
+    ) {
+      return visitedNodesInOrder;
+    }
+
+    closestNode.isVisited = true;
+
+    visitedNodesInOrder.push(
+      closestNode
+    );
+
+    if (closestNode === finishNode) {
+      return visitedNodesInOrder;
+    }
+
+    updateUnvisitedNeighbors(
+      closestNode,
+      grid
+    );
+  }
+
+  return visitedNodesInOrder;
+}
+
+
+/* =========================
+      SORT BY DISTANCE
+   ========================= */
+
+function sortNodesByDistance(nodes) {
+  nodes.sort(
+    (nodeA, nodeB) =>
+      nodeA.distance -
+      nodeB.distance
+  );
+}
+
+
+/* =========================
+       GET ALL NODES
+   ========================= */
+
+function getAllNodes(grid) {
+  const nodes = [];
+
+  for (const row of grid) {
+    for (const node of row) {
+      nodes.push(node);
+    }
+  }
+
+  return nodes;
+}
+
+
+/* =========================
+     UPDATE NEIGHBOURS
+   ========================= */
+
+function updateUnvisitedNeighbors(
+  node,
+  grid
+) {
+  const unvisitedNeighbors =
+    getUnvisitedNeighbors(
+      node,
+      grid
+    );
+
+  for (
+    const neighbor
+    of unvisitedNeighbors
+  ) {
+
+    /*
+      Weighted Dijkstra:
+
+      Current distance
+      +
+      cost of entering neighbour
+    */
+
+    const newDistance =
+      node.distance +
+      neighbor.weight;
+
+    if (
+      newDistance <
+      neighbor.distance
+    ) {
+      neighbor.distance =
+        newDistance;
+
+      neighbor.previousNode =
+        node;
+    }
+  }
+}
+
+
+/* =========================
+      GET NEIGHBOURS
+   ========================= */
+
+function getUnvisitedNeighbors(
+  node,
+  grid
+) {
+  const neighbors = [];
+
+  const { row, col } = node;
+
+  if (row > 0) {
+    neighbors.push(
+      grid[row - 1][col]
+    );
+  }
+
+  if (row < grid.length - 1) {
+    neighbors.push(
+      grid[row + 1][col]
+    );
+  }
+
+  if (col > 0) {
+    neighbors.push(
+      grid[row][col - 1]
+    );
+  }
+
+  if (col < grid[0].length - 1) {
+    neighbors.push(
+      grid[row][col + 1]
+    );
+  }
+
+  return neighbors.filter(
+    neighbor =>
+      !neighbor.isVisited &&
+      !neighbor.isWall
+  );
+}
+
+
+/* =========================
+    SHORTEST PATH
+   ========================= */
+
+export function getNodesInShortestPathOrder(
+  finishNode
+) {
+  const nodesInShortestPathOrder = [];
+
+  let currentNode = finishNode;
+
+  while (currentNode !== null) {
+    nodesInShortestPathOrder.unshift(
+      currentNode
+    );
+
+    currentNode =
+      currentNode.previousNode;
+  }
+
+  return nodesInShortestPathOrder;
+}
