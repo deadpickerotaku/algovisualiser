@@ -1,0 +1,52 @@
+.node {
+  width: 25px;
+  height: 25px;
+
+  outline: 1px solid #ddd;
+
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-size: 12px;
+  font-weight: bold;
+
+  user-select: none;
+}
+
+/* START */
+
+.node-start {
+  background-color: green;
+}
+
+/* FINISH */
+
+.node-finish {
+  background-color: red;
+}
+
+/* WALL */
+
+.node-wall {
+  background-color: purple;
+}
+
+/* WEIGHT */
+
+.node-weight {
+  background-color: orange;
+}
+
+/* VISITED */
+
+.node-visited {
+  background-color: lightblue;
+}
+
+/* SHORTEST PATH */
+
+.node-shortest-path {
+  background-color: yellow;
+}
